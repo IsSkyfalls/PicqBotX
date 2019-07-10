@@ -220,17 +220,22 @@ public class PicqBotX
      *
      * @param prefixes 前缀
      */
-    public void enableCommandManager(String... prefixes)
+    private void enableCommandManager(boolean disableCommandPrefixes,String... prefixes)
     {
         logger.timing.init();
 
-        commandManager = new CommandManager(this, prefixes);
+        commandManager = new CommandManager(this, disableCommandPrefixes,prefixes);
         eventManager.registerListener(new CommandListener(commandManager));
         logInitDone(logger, "指令管理器     ", 6, 0);
 
         logger.timing.clear();
     }
-
+    public void enableCommandManager(boolean disableCommandPrefixes){
+        this.enableCommandManager(disableCommandPrefixes,"");
+    }
+    public void enableCommandManager(String... prefixes){
+        this.enableCommandManager(false,prefixes);
+    }
     /**
      * 验证HTTP插件版本
      *

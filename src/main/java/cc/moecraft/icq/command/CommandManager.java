@@ -15,6 +15,7 @@ import lombok.Getter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import static cc.moecraft.icq.command.CommandArgsParser.parse;
 
@@ -30,25 +31,30 @@ import static cc.moecraft.icq.command.CommandArgsParser.parse;
  * @since 2019-03-24 14:01
  */
 @Getter
-public class CommandManager
-{
+public class CommandManager {
     private PicqBotX bot;
-
-    /** 指令前缀 */
+    @Getter
+    private boolean commandPrefixesDisabled;
+    /**
+     * 指令前缀
+     */
     private final String[] prefixes;
 
-    /** 已注册的指令, [指令名, 指令对象] */
+    /**
+     * 已注册的指令, [指令名, 指令对象]
+     */
     private Map<String, IcqCommand> commands = new HashMap<>();
 
     /**
      * 构造一个指令管理器
      *
-     * @param bot 机器人对象
-     * @param prefixes 前缀
+     * @param bot                    机器人对象
+     * @param disableCommandPrefixes 不使用指令前缀
+     * @param prefixes               前缀
      */
-    public CommandManager(PicqBotX bot, String... prefixes)
-    {
+    public CommandManager(PicqBotX bot, boolean disableCommandPrefixes, String[] prefixes){
         this.bot = bot;
+        this.commandPrefixesDisabled = disableCommandPrefixes;
         this.prefixes = prefixes;
     }
 
@@ -57,10 +63,8 @@ public class CommandManager
      *
      * @param commands 多个指令
      */
-    public void registerCommands(IcqCommand ... commands)
-    {
-        for (IcqCommand command : commands)
-        {
+    public void registerCommands(IcqCommand... commands){
+        for (IcqCommand command : commands) {
             registerCommand(command);
         }
     }
@@ -70,8 +74,7 @@ public class CommandManager
      *
      * @param command 指令
      */
-    public void registerCommand(IcqCommand command)
-    {
+    public void registerCommand(IcqCommand command){
         commands.put(command.properties().getName().toLowerCase(), command);
         command.properties().getAlias().forEach(alias -> commands.put(alias.toLowerCase(), command));
     }
@@ -84,8 +87,7 @@ public class CommandManager
      *
      * @param event 事件
      */
-    public void runCommand(EventMessage event)
-    {
+    public void runCommand(EventMessage event){
         PicqBotX bot = event.getBot();
 
         final boolean isGM = event instanceof EventGroupMessage;
@@ -95,18 +97,14 @@ public class CommandManager
         // 获取Args
         CommandArgs args;
 
-        try
-        {
+        try {
             args = parse(this, event.getMessage(), isDM || isGM);
-        }
-        catch (NotACommandException | CommandNotFoundException e)
-        {
+        } catch (NotACommandException | CommandNotFoundException e) {
             return;
         }
 
         // 判断维护
-        if (bot.getConfig().isMaintenanceMode())
-        {
+        if(bot.getConfig().isMaintenanceMode()){
             event.respond(bot.getConfig().getMaintenanceResponse());
             return;
         }
@@ -121,24 +119,17 @@ public class CommandManager
         // 调用指令执行方法
         IcqCommand runner = args.getCommandRunner();
 
-        if (runner instanceof EverywhereCommand)
-        {
+        if(runner instanceof EverywhereCommand){
             event.respond(((EverywhereCommand) runner).run(event, user, args.getCommandName(), args.getArgs()));
-        }
-        else if (isGM && runner instanceof GroupCommand)
-        {
+        } else if(isGM && runner instanceof GroupCommand){
             event.respond(((GroupCommand) runner).groupMessage((EventGroupMessage) event,
                     bot.getGroupUserManager().getUserFromID(user.getId(), group), group,
                     args.getCommandName(), args.getArgs()));
-        }
-        else if (isDM && runner instanceof DiscussCommand)
-        {
+        } else if(isDM && runner instanceof DiscussCommand){
             event.respond(((DiscussCommand) runner).discussMessage((EventDiscussMessage) event,
                     bot.getGroupUserManager().getUserFromID(user.getId(), group), group,
                     args.getCommandName(), args.getArgs()));
-        }
-        else if (isPM && runner instanceof PrivateCommand)
-        {
+        } else if(isPM && runner instanceof PrivateCommand){
             event.respond(((PrivateCommand) runner).privateMessage((EventPrivateMessage) event, user,
                     args.getCommandName(), args.getArgs()));
         }
@@ -149,11 +140,20 @@ public class CommandManager
      *
      * @return 指令列表
      */
-    public ArrayList<IcqCommand> getCommandList()
-    {
+    public ArrayList<IcqCommand> getCommandList(){
         ArrayList<IcqCommand> result = new ArrayList<>();
         commands.forEach((k, v) -> result.add(v));
         return result;
+    }
+
+    /**
+     * 获取指令名列表(无复制)
+     *
+     * @return 指令列表
+     */
+    @Deprecated
+    public Set<String> getCommandNameSetNoCopy(){
+        return commands.keySet();
     }
 
     /**
@@ -161,8 +161,7 @@ public class CommandManager
      *
      * @return 指令名列表
      */
-    public ArrayList<String> getCommandNameList()
-    {
+    public ArrayList<String> getCommandNameList(){
         ArrayList<String> result = new ArrayList<>();
         getCommandList().forEach(command -> result.add(command.properties().getName()));
         return result;
